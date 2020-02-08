@@ -20,6 +20,7 @@ from pyramid.events import NewRequest
 import requests
 import threading
 import pytz
+from .utils import url_get, url_post
 
 log = get_log(__name__)
 
@@ -73,6 +74,8 @@ def _fmt(data, accepter):
             accepter.get('text/xml') or accepter.get('application/xml') or accepter.get(
         'application/samlmetadata+xml')):
         return dumptree(data), 'application/samlmetadata+xml'
+    #if isinstance(data, (etree._Element, etree._ElementTree)):
+        #return dumptree(data), 'application/xml'
     if isinstance(data, (dict, list)) and accepter.get('application/json'):
         return dumps(data, default=json_serializer), 'application/json'
 
@@ -150,6 +153,7 @@ def process_handler(request):
     # TODO - sometimes the client sends > 1 accept header value with ','.
     accept = str(request.accept).split(',')[0]
     # import pdb; pdb.set_trace()
+    log.debug("accept: {}".format(accept))
     if (not accept or 'application/*' in accept or 'text/*' in accept or '*/*' in accept) and ext:
         accept = _ctypes[ext]
 
@@ -200,6 +204,32 @@ def process_handler(request):
     if request.method == 'GET':
         raise exc.exception_response(404)
 
+def update_handler(request):
+  entry = request.POST.get('entry', 'request')
+  log.debug("update_handler {}".format(entry))
+
+  log.debug("registry: {}".format(request.registry))
+  log.debug("md: {}".format(request.registry.md))
+  log.debug("store: {}".format(request.registry.md.store))
+  log.debug("rm: {}".format(request.registry.md.rm))
+  log.debug("rm.url: {}".format(request.registry.md.rm.url))
+
+  for r in request.registry.md.rm:
+      log.debug("r: {}".format(r))
+      log.debug("info: {}".format(r.info))
+      log.debug("url: {}".format(r.url))
+      ents = r.info.get('Entities', None)
+      if ents and entry in ents:
+          log.debug("entry matched: {}".format(entry))
+          # Refresh source MD for this URL Resource
+          request.registry.md.rm.reload(url=r.url)
+          # Call Hub update callback for entityID config.hub_url
+          params = { 'id': config.public_url.strip("/") + "/entities/" + entry }
+          r = url_post(config.hub_update, params)
+          log.debug("r: {}".format(r))
+
+  response = Response("OK\n")
+  return response
 
 def webfinger_handler(request):
     """An implementation the webfinger protocol
@@ -432,12 +462,16 @@ def mkapp(*args, **kwargs):
                       request_method=['POST', 'PUT'])
         ctx.add_view(process_handler, route_name='call')
 
+        ctx.add_route('update', '/api/update',
+                      request_method=['POST'])
+        ctx.add_view(update_handler, route_name='update')
+
         ctx.add_route('request', '/*path', request_method='GET')
         ctx.add_view(process_handler, route_name='request')
 
         start = datetime.utcnow() + timedelta(seconds=1)
         log.debug(start)
-        if config.update_frequency > 0:
+        if config.update_frequency > 0: #schedule interval update
             ctx.registry.scheduler.add_job(call,
                                            'interval',
                                            id="call/update",
@@ -447,5 +481,11 @@ def mkapp(*args, **kwargs):
                                            replace_existing=True,
                                            max_instances=1,
                                            timezone=pytz.utc)
-
+        else: #run update now to populate MDQ
+            ctx.registry.scheduler.add_job(call,
+                                          'date',
+                                          id='initialise',
+                                          args=['update'],
+                                          next_run_time=start,
+                                          misfire_grace_time=60)
         return ctx.make_wsgi_app()

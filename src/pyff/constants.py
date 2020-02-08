@@ -120,7 +120,7 @@ class Config(object):
     access_log = setting("access_log", None)
     error_log = setting("error_log", None)
     logfile = setting("log", None)
-    port = setting("port", 8080, as_int)
+    port = setting("port", 80, as_int)
     bind_address = setting("bind_address", "127.0.0.1")
     pid_file = setting("pid_file", "/var/run/pyff.pid")
     caching_enabled = setting("caching.enabled", True)
@@ -162,13 +162,14 @@ class Config(object):
     load_icons_async = setting("load_icons_async", False, as_bool)  # this is unstable - apscheduler is unpredictable
     pipeline = setting("pipeline", None)
     scheduler_job_store = setting("scheduler_job_store", "memory", as_string)
+    hub_url = setting("hub_url", None, as_string)
+    hub_update = setting("hub_update", None, as_string)
 
     @property
     def base_url(self):
         if self.public_url:
-            return self.public_url
+            return self.public_url.strip("/")
         return "http://{}{}".format(config.bind_address, "" if config.port == 80 else ":{}".format(config.port))
-
 
 config = Config()
 

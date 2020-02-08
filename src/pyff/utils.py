@@ -693,6 +693,9 @@ class DirAdapter(BaseAdapter):
     def close(self):
         pass
 
+def url_post(url, params):
+    r = requests.post(url, data=params)
+    return r
 
 def url_get(url):
     """

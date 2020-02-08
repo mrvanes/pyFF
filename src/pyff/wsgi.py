@@ -1,5 +1,5 @@
 from wsgiref.simple_server import make_server
-from .api import mkapp
+from .api import mkapp, call
 from .repo import MDRepository
 
 md = MDRepository()
@@ -26,4 +26,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

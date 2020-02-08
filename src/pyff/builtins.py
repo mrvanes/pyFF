@@ -1377,6 +1377,21 @@ def emit(req, ctype="application/xml", *opts):
         raise PipeException("Empty")
 
     req.state['headers']['Content-Type'] = ctype
+
+    #Create a publisher header dict, one for self and one for hub
+    #Link: <http://pub.websub.local/md>; rel="self", <http://pub.websub.local/hub>; rel="hub"
+    hub_url = config.hub_url
+    if hub_url:
+      log.debug("hub_url: {}".format(hub_url))
+      path = req.state['path']
+      log.debug("path: {}".format(path))
+      pub = {
+        'self': config.public_url.strip('/') + "/entities/" + path,
+        'hub': hub_url
+      }
+      h = ', '.join([ "<"+v+">; rel=\""+k+"\"" for k,v in pub.items() ])
+      req.state['headers']['Link'] = h
+
     if six.PY2:
         d = six.u(d)
     return d

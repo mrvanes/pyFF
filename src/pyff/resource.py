@@ -181,14 +181,20 @@ class Resource(Watchable):
         return "Resource {} expires at {} using ".format(self.url if self.url is not None else "(root)", self.expire_time) + \
                ",".join(["{}={}".format(k, v) for k, v in list(self.opts.items())])
 
-    def reload(self, fail_on_error=False):
+    def reload(self, fail_on_error=False, url=None):
+        children = self.children
+        if url:
+            for c in self.walk():
+                if c.url == url:
+                    children = c
+
         with non_blocking_lock(self.lock):
             if fail_on_error:
                 for r in self.walk():
                     r.parse(url_get)
             else:
                 rp = ResourceHandler(name="Metadata")
-                rp.schedule(self.children)
+                rp.schedule(children)
                 try:
                     rp.done.acquire()
                     rp.done.wait()
@@ -283,6 +289,13 @@ class Resource(Watchable):
             data = r.text
         else:
             raise ResourceException("Got status={:d} while getting {}".format(r.status_code, self.url))
+
+        # Discover websub topic and hub urls
+        links = r.links
+        if links:
+            log.debug("Links: {}".format(links))
+            info['Self'] = links['self']['url']
+            info['Hub'] = links['hub']['url']
 
         parse_info = parse_resource(self, data)
         if parse_info is not None and isinstance(parse_info, dict):
