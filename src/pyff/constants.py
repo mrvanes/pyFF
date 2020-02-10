@@ -164,6 +164,8 @@ class Config(object):
     scheduler_job_store = setting("scheduler_job_store", "memory", as_string)
     hub_url = setting("hub_url", None, as_string)
     hub_update = setting("hub_update", None, as_string)
+    subscriber_auto_secret = setting("subscriber_auto_secret", True, as_bool)
+    subscriber_callback_endpoint = setting("subscriber_callback_endpoint", "/callback", as_string)
 
     @property
     def base_url(self):

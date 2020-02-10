@@ -16,6 +16,7 @@ from .utils import url_get, non_blocking_lock, hex_digest, img_to_data, Watchabl
 from copy import deepcopy
 from threading import Lock, Condition
 from .fetch import make_fetcher
+from .subscriber import subscriber
 
 requests.packages.urllib3.disable_warnings()
 
@@ -290,12 +291,17 @@ class Resource(Watchable):
         else:
             raise ResourceException("Got status={:d} while getting {}".format(r.status_code, self.url))
 
-        # Discover websub topic and hub urls
+        # Discover websub topic and hub urls and subscribe to topic, if possible
         links = r.links
+        request = {}
         if links:
-            log.debug("Links: {}".format(links))
-            info['Self'] = links['self']['url']
-            info['Hub'] = links['hub']['url']
+            #log.debug("Links: {}".format(links))
+            request['topic_url'] = links.get('self', {}).get('url', None)
+            request['hub_url'] = links.get('hub', {}).get('url', None)
+
+        if request['topic_url'] and request['hub_url']:
+            callback_id = subscriber.subscribe(**request)
+            log.debug('callback_id: {}'.format(callback_id))
 
         parse_info = parse_resource(self, data)
         if parse_info is not None and isinstance(parse_info, dict):

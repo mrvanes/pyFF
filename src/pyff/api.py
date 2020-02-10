@@ -21,6 +21,7 @@ import requests
 import threading
 import pytz
 from .utils import url_get, url_post
+from .subscriber import subscriber, parse_lease_seconds
 
 log = get_log(__name__)
 
@@ -205,31 +206,73 @@ def process_handler(request):
         raise exc.exception_response(404)
 
 def update_handler(request):
-  entry = request.POST.get('entry', 'request')
-  log.debug("update_handler {}".format(entry))
+    entry = request.POST.get('entry', None)
+    log.debug("update_handler {}".format(entry))
 
-  log.debug("registry: {}".format(request.registry))
-  log.debug("md: {}".format(request.registry.md))
-  log.debug("store: {}".format(request.registry.md.store))
-  log.debug("rm: {}".format(request.registry.md.rm))
-  log.debug("rm.url: {}".format(request.registry.md.rm.url))
+    log.debug("registry: {}".format(request.registry))
+    log.debug("md: {}".format(request.registry.md))
+    log.debug("store: {}".format(request.registry.md.store))
+    log.debug("rm: {}".format(request.registry.md.rm))
+    log.debug("rm.url: {}".format(request.registry.md.rm.url))
 
-  for r in request.registry.md.rm:
-      log.debug("r: {}".format(r))
-      log.debug("info: {}".format(r.info))
-      log.debug("url: {}".format(r.url))
-      ents = r.info.get('Entities', None)
-      if ents and entry in ents:
-          log.debug("entry matched: {}".format(entry))
-          # Refresh source MD for this URL Resource
-          request.registry.md.rm.reload(url=r.url)
-          # Call Hub update callback for entityID config.hub_url
-          params = { 'id': config.public_url.strip("/") + "/entities/" + entry }
-          r = url_post(config.hub_update, params)
-          log.debug("r: {}".format(r))
+    for r in request.registry.md.rm:
+        log.debug("r: {}".format(r))
+        log.debug("info: {}".format(r.info))
+        log.debug("url: {}".format(r.url))
+        ents = r.info.get('Entities', None)
+        if ents and entry in ents:
+            log.debug("entry matched: {}".format(entry))
+            # Refresh source MD for this URL Resource
+            request.registry.md.rm.reload(url=r.url)
+            # Call Hub update callback for entityID config.hub_url
+            params = { 'id': config.public_url.strip("/") + "/entities/" + entry }
+            r = url_post(config.hub_update, params)
+            log.debug("r: {}".format(r))
 
-  response = Response("OK\n")
-  return response
+    response = Response("OK\n")
+    return response
+
+# WebSub API implementation
+def callback_handler(request):
+    callback_id = request.matchdict.get('callback_id', None)
+    log.debug("callback_handler {}".format(callback_id))
+
+    # If this is POST this is an update request
+    if request.method == 'POST':
+        subscription = subscriber.storage[callback_id]
+        #body = request.get_data()
+        request.registry.md.rm.reload(url=subscription.get('topic_url', None))
+        response = Response('Content Received!\n')
+        return response
+
+    mode = request.GET.get('hub.mode', None)
+    topic_url = request.GET.get('hub.topic', None)
+    lease_seconds = request.GET.get('hub.lease_seconds', None)
+    challenge = request.GET.get('hub.challenge', None)
+
+    if mode == 'denied':
+        return subscriber.temp_storage.pop(callback_id)
+    elif mode in ['subscribe', 'unsubscribe']:
+        subscription_request = subscriber.temp_storage.pop(callback_id)
+        if mode != subscription_request['mode']:
+            raise exc.exception_response(404)
+        if topic_url != subscription_request['topic_url']:
+            raise exc.exception_response(404)
+        if mode == 'subscribe':
+            lease = parse_lease_seconds(lease_seconds)
+            if lease:
+                subscription_request['lease_seconds'] = lease
+            else:
+                raise exc.exception_response(404)
+            subscriber.storage[callback_id] = subscription_request
+        else:  # unsubscribe
+            del subscriber.storage[callback_id]
+
+        response = Response(challenge)
+        return response
+    else:
+        raise exc.exception_response(400)
+
 
 def webfinger_handler(request):
     """An implementation the webfinger protocol
@@ -465,6 +508,11 @@ def mkapp(*args, **kwargs):
         ctx.add_route('update', '/api/update',
                       request_method=['POST'])
         ctx.add_view(update_handler, route_name='update')
+
+        callback = config.subscriber_callback_endpoint
+        ctx.add_route('callback', callback + '/{callback_id}',
+                      request_method=['GET', 'POST'])
+        ctx.add_view(callback_handler, route_name='callback')
 
         ctx.add_route('request', '/*path', request_method='GET')
         ctx.add_view(process_handler, route_name='request')

@@ -15,6 +15,9 @@ class PyffException(BaseException):
         raise self._wrapped
 
 
+class SubscriberException(PyffException):
+    pass
+
 class ResourceException(PyffException):
     pass
 
