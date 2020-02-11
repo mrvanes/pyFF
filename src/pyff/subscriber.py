@@ -291,7 +291,7 @@ class Subscriber(object):
                                               **requests_opts)
             assert response.status_code == 202
         except requests.exceptions.RequestException as e:
-            raise SubscriberException(INVALID_HUB_URL) from e
+            raise SubscriberException(INVALID_HUB_URL + ": {}".format(request['hub_url'])) from e
         except AssertionError as old_err:
             err = SubscriberException("Hub error - %s: %s" % (response.status_code,
                                                           response.content))

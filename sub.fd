@@ -1,0 +1,20 @@
+- when update:
+  - load:
+      - http://hub.websub.local/entities/https://idp.mrvanes.com/saml/saml2/idp/metadata.php
+- when request:
+  - select:
+  - pipe:
+      - when accept text/html:
+          - first
+          - finalize:
+              cacheDuration: PT12H
+              validUntil: P10D
+          - sign:
+              key: metadata/sign.key
+              cert: metadata/sign.crt
+          - emit application/xml
+          - break
+      - when accept application/json:
+          - discojson
+          - emit application/json
+          - break

@@ -1,5 +1,5 @@
 from wsgiref.simple_server import make_server
-from .api import mkapp, call
+from .api import mkapp
 from .repo import MDRepository
 
 md = MDRepository()

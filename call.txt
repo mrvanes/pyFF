@@ -1,0 +1,3 @@
+#curl -X POST http://hub.websub.local/api/call/update
+#curl -X POST http://hub.websub.local/api/update -F 'entry=https://idp.mrvanes.com/saml/saml2/idp/metadata.php'
+

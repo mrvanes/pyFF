@@ -1,0 +1,20 @@
+- when update:
+  - load:
+      - http://pub.websub.local/idp.xml
+- when request:
+  - select:
+  - pipe:
+      - when accept text/html:
+          - first
+          - finalize:
+              cacheDuration: PT12H
+              validUntil: P10D
+          - sign:
+              key: metadata/sign.key
+              cert: metadata/sign.crt
+          - emit application/xml
+          - break
+      - when accept application/json:
+          - discojson
+          - emit application/json
+          - break
