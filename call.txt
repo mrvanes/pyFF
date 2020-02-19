@@ -1,3 +1,6 @@
-#curl -X POST http://hub.websub.local/api/call/update
-#curl -X POST http://hub.websub.local/api/update -F 'entry=https://idp.mrvanes.com/saml/saml2/idp/metadata.php'
+# For a non-websub idp, inform pyFF directly
+#curl -X POST http://mdq.websub.local/api/update -F 'entry=http://idp.websub.local/idp'
+
+# For a websub idp, inform the hub
+#curl -X POST http://hub.websub.local/update -F 'topic=http://idp.websub.local/idp.xml'
 

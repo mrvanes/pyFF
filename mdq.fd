@@ -1,6 +1,6 @@
 - when update:
   - load:
-      - http://hub.websub.local/entities/http://pub.websub.local/idp
+      - http://idp.websub.local/idp.xml
 - when request:
   - select:
   - pipe:

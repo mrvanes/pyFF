@@ -218,6 +218,12 @@ class Resource(Watchable):
     def __contains__(self, item):
         return item in self.children
 
+    def get(self, url):
+        for c in self.children:
+            if c.url == url:
+                return c
+        raise ValueError("Resource {} not present".format(url))
+
     def walk(self):
         if self.url is not None:
             yield self
@@ -272,7 +278,8 @@ class Resource(Watchable):
             return self._infos[-1]
 
     def parse(self, getter):
-        info = dict()
+        #info = dict()
+        info = self.info
         info['Resource'] = self.url
         self.add_info(info)
         data = None
@@ -300,11 +307,22 @@ class Resource(Watchable):
             request['hub_url'] = links.get('hub', {}).get('url', None)
 
         if request['topic_url'] and request['hub_url']:
-            try:
-              callback_id = subscriber.subscribe(**request)
-              log.debug('callback_id: {}'.format(callback_id))
-            except Exception as e:
-              log.debug("Something went wrong while subscribing: {}".format(e))
+            callback_id = info.get('callback_id', None)
+            log.debug("callback_id: {}".format(callback_id))
+            if callback_id == None:
+                try:
+                    log.debug("Trying subscribe")
+                    callback_id = subscriber.subscribe(**request)
+                    info['callback_id'] = callback_id
+                    log.debug('subscribed callback_id: {}'.format(callback_id))
+                except Exception as e:
+                    log.debug("Something went wrong while subscribing: {}".format(e))
+            else:
+                # This would be a good time to renew subscription?
+                log.debug("Trying renew {}".format(callback_id))
+                callback_id = subscriber.renew(callback_id)
+                log.debug('Renew callback_id: {}'.format(callback_id))
+                info['callback_id'] = callback_id
 
         parse_info = parse_resource(self, data)
         if parse_info is not None and isinstance(parse_info, dict):

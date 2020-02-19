@@ -225,7 +225,7 @@ def update_handler(request):
             # Refresh source MD for this URL Resource
             request.registry.md.rm.reload(url=r.url)
             # Call Hub update callback for entityID config.hub_url
-            params = { 'id': config.public_url.strip("/") + "/entities/" + entry }
+            params = { 'topic': config.public_url.strip("/") + "/entities/" + entry }
             r = url_post(config.hub_update, params)
             log.debug("r: {}".format(r))
 
@@ -240,8 +240,14 @@ def callback_handler(request):
     # If this is POST this is an update request
     if request.method == 'POST':
         subscription = subscriber.storage[callback_id]
-        #body = request.get_data()
-        request.registry.md.rm.reload(url=subscription.get('topic_url', None))
+        topic_url = subscription.get('topic_url', None)
+        request.registry.md.rm.reload(url=topic_url)
+        log.debug("updating resource: {}".format(topic_url))
+        entities = request.registry.md.rm.get(topic_url).info.get('Entities', None)
+        for entity in entities:
+            log.debug("updating entity: {}".format(entity))
+            params = { 'topic': config.public_url.strip("/") + "/entities/" + entity }
+            r = url_post(config.hub_update, params)
         response = Response('Content Received!\n')
         return response
 
