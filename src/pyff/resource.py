@@ -300,8 +300,11 @@ class Resource(Watchable):
             request['hub_url'] = links.get('hub', {}).get('url', None)
 
         if request['topic_url'] and request['hub_url']:
-            callback_id = subscriber.subscribe(**request)
-            log.debug('callback_id: {}'.format(callback_id))
+            try:
+              callback_id = subscriber.subscribe(**request)
+              log.debug('callback_id: {}'.format(callback_id))
+            except Exception as e:
+              log.debug("Something went wrong while subscribing: {}".format(e))
 
         parse_info = parse_resource(self, data)
         if parse_info is not None and isinstance(parse_info, dict):

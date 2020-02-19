@@ -258,7 +258,11 @@ class Subscriber(object):
         a unique identifier of the subscription.
 
         """
-        return self.subscribe_impl(mode='subscribe', **subscription_request)
+        try:
+          r = self.subscribe_impl(mode='subscribe', **subscription_request)
+        except Exception as e:
+          raise e
+        return r
 
     def subscribe_impl(self, callback_id=None, **request):
         # 5.1 Subscriber Sends Subscription Request

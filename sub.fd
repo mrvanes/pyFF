@@ -1,6 +1,6 @@
 - when update:
   - load:
-      - http://hub.websub.local/entities/https://idp.mrvanes.com/saml/saml2/idp/metadata.php
+      - http://hub.websub.local/entities/http://pub.websub.local/idp
 - when request:
   - select:
   - pipe:

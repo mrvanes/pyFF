@@ -25,3 +25,8 @@ localconfig.py
 .whoosh
 
 docs/code
+
+lib/
+man/
+metadata/
+share/
