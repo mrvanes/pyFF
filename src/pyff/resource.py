@@ -306,7 +306,9 @@ class Resource(Watchable):
             request['topic_url'] = links.get('self', {}).get('url', None)
             request['hub_url'] = links.get('hub', {}).get('url', None)
 
-        if request['topic_url'] and request['hub_url']:
+        topic_url = request.get('topic_url', None)
+        hub_url = request.get('hub_url', None)
+        if topic_url and hub_url:
             callback_id = info.get('callback_id', None)
             log.debug("callback_id: {}".format(callback_id))
             if callback_id == None:
@@ -318,11 +320,16 @@ class Resource(Watchable):
                 except Exception as e:
                     log.debug("Something went wrong while subscribing: {}".format(e))
             else:
-                # This would be a good time to renew subscription?
-                log.debug("Trying renew {}".format(callback_id))
-                callback_id = subscriber.renew(callback_id)
-                log.debug('Renew callback_id: {}'.format(callback_id))
-                info['callback_id'] = callback_id
+                try:
+                    # This would be a good time to renew subscription?
+                    log.debug("Trying renew {}".format(callback_id))
+                    callback_id = subscriber.renew(callback_id)
+                    log.debug('Renew callback_id: {}'.format(callback_id))
+                    info['callback_id'] = callback_id
+                except Exception as e:
+                    log.debug("Something went wrong while renewing: {}".format(e))
+            # We need to update self.url if self pointed to different url!
+            self.url = topic_url
 
         parse_info = parse_resource(self, data)
         if parse_info is not None and isinstance(parse_info, dict):

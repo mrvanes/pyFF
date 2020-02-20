@@ -1,6 +1,6 @@
 - when update:
-  - load:
-      - http://mdq.websub.local/entities/http://idp.websub.local/idp
+  - mirror:
+      - http://mdq.websub.local/.well-known/webfinger
 - when request:
   - select:
   - pipe:

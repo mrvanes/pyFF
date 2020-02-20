@@ -14,6 +14,16 @@
               cert: metadata/sign.crt
           - emit application/xml
           - break
+      - when accept application/xml:
+          - first
+          - finalize:
+              cacheDuration: PT12H
+              validUntil: P10D
+          - sign:
+              key: metadata/sign.key
+              cert: metadata/sign.crt
+          - emit application/xml
+          - break
       - when accept application/json:
           - discojson
           - emit application/json

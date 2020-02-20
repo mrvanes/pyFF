@@ -227,6 +227,8 @@ def update_handler(request):
             # Call Hub update callback for entityID config.hub_url
             params = { 'topic': config.public_url.strip("/") + "/entities/" + entry }
             r = url_post(config.hub_update, params)
+            params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entity) }
+            r = url_post(config.hub_update, params)
             log.debug("r: {}".format(r))
 
     response = Response("OK\n")
@@ -247,6 +249,8 @@ def callback_handler(request):
         for entity in entities:
             log.debug("updating entity: {}".format(entity))
             params = { 'topic': config.public_url.strip("/") + "/entities/" + entity }
+            r = url_post(config.hub_update, params)
+            params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entity) }
             r = url_post(config.hub_update, params)
         response = Response('Content Received!\n')
         return response

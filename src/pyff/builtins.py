@@ -22,7 +22,7 @@ from .decorators import deprecated
 from .logs import get_log
 from .pipes import Plumbing, PipeException, PipelineCallback, pipe
 from .utils import total_seconds, dumptree, safe_write, root, with_tree, duration2timedelta, xslt_transform, \
-    validate_document, hash_id, ensure_dir
+    validate_document, hash_id, ensure_dir, url_get
 from .samlmd import sort_entities, iter_entities, annotate_entity, set_entity_attributes, \
     discojson_t, set_pubinfo, set_reginfo, find_in_document, entitiesdescriptor, set_nodecountry, resolve_entities
 from six.moves.urllib_parse import urlparse
@@ -632,6 +632,46 @@ def load(req, *opts):
     log.debug("Refreshing all resources")
     req.md.rm.reload(fail_on_error=bool(opts['fail_on_error']))
 
+@pipe
+def mirror(req, *opts):
+    """
+    Special upstream pyFF mirror fetcher
+
+    .. code-block:: yaml
+
+        - mirror
+          - http://example.com/.well-known/webfinger
+
+    """
+
+    remotes = []
+    for x in req.args:
+        url = x.strip()
+        log.debug("mirror parsing '%s'" % x)
+
+        # The webfinger endpoint returns a json object that needs clever parsing
+        r = url_get(url)
+        if r:
+            webfinger = r.json()
+        else:
+            return
+
+        #log.debug("Mirror webfinger: {}".format(webfinger))
+        links = webfinger.get('links', None)
+        if not links:
+            return
+
+        for l in links:
+            href = l.get('href', None)
+            if (l['rel'] == "urn:oasis:names:tc:SAML:2.0:metadata" and
+                l['type'] == "application/xml" and
+                # http://mdq.websub.local/entities/{sha1}73fe06af9182ada0c1275179bb1491bea33552de.xml
+                re.match('^http.+/entities/.+.xml$', href)):
+                log.debug("Mirror loading {}".format(href))
+                req.md.rm.add_child(href)
+
+    log.debug("Refreshing all resources")
+    req.md.rm.reload(fail_on_error=True)
 
 def _select_args(req):
     args = req.args
@@ -1383,7 +1423,7 @@ def emit(req, ctype="application/xml", *opts):
     hub_url = config.hub_url
     if hub_url:
       log.debug("hub_url: {}".format(hub_url))
-      path = req.state['path']
+      path = req.state['path'] or ""
       log.debug("path: {}".format(path))
       pub = {
         'self': config.public_url.strip('/') + "/entities/" + path,
