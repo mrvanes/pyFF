@@ -1,5 +1,5 @@
 - when update:
-  - mirror:
+  - load:
       - http://mdq.websub.local/.well-known/webfinger
 - when request:
   - select:

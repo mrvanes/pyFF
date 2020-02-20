@@ -22,6 +22,7 @@ import threading
 import pytz
 from .utils import url_get, url_post
 from .subscriber import subscriber, parse_lease_seconds
+from .resource import Resource
 
 log = get_log(__name__)
 
@@ -106,7 +107,7 @@ def process_handler(request):
 
         return x, None
 
-    log.debug(request)
+    #log.debug(request)
 
     if request.matchdict is None:
         raise exc.exception_response(400)
@@ -174,7 +175,7 @@ def process_handler(request):
                           state=state,
                           raise_exceptions=True,
                           scheduler=request.registry.scheduler)
-            log.debug(r)
+            #log.debug(r)
             if r is None:
                 r = []
 
@@ -219,17 +220,22 @@ def update_handler(request):
         log.debug("r: {}".format(r))
         log.debug("info: {}".format(r.info))
         log.debug("url: {}".format(r.url))
-        ents = r.info.get('Entities', None)
+        ents = r.info.get('Entities', [])
         if ents and entry in ents:
             log.debug("entry matched: {}".format(entry))
+
             # Refresh source MD for this URL Resource
             request.registry.md.rm.reload(url=r.url)
             # Call Hub update callback for entityID config.hub_url
             params = { 'topic': config.public_url.strip("/") + "/entities/" + entry }
-            r = url_post(config.hub_update, params)
-            params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entity) }
-            r = url_post(config.hub_update, params)
-            log.debug("r: {}".format(r))
+            # Call Hub update callback for {sha1}entityID config.hub_url
+            url_post(config.hub_update, params)
+            params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entry) }
+            url_post(config.hub_update, params)
+
+            # Send updates for the webfinger endpoint
+            #params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
+            #url_post(config.hub_update, params)
 
     response = Response("OK\n")
     return response
@@ -242,16 +248,34 @@ def callback_handler(request):
     # If this is POST this is an update request
     if request.method == 'POST':
         subscription = subscriber.storage[callback_id]
+        if subscription == None:
+            log.debug("callback_id not found {}".format(callback_id))
+            response = Response('callback_id not found!\n')
+            return response
         topic_url = subscription.get('topic_url', None)
+
         request.registry.md.rm.reload(url=topic_url)
+
         log.debug("updating resource: {}".format(topic_url))
-        entities = request.registry.md.rm.get(topic_url).info.get('Entities', None)
+        resource = request.registry.md.rm.get(topic_url)
+        if isinstance(resource, Resource):
+            entities = resource.info.get('Entities', [])
+        else:
+            entities = []
+
         for entity in entities:
             log.debug("updating entity: {}".format(entity))
             params = { 'topic': config.public_url.strip("/") + "/entities/" + entity }
             r = url_post(config.hub_update, params)
             params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entity) }
             r = url_post(config.hub_update, params)
+
+        if entities:
+            pass
+            # Update webfinger endpoint
+            #params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
+            #url_post(config.hub_update, params)
+
         response = Response('Content Received!\n')
         return response
 
@@ -259,11 +283,15 @@ def callback_handler(request):
     topic_url = request.GET.get('hub.topic', None)
     lease_seconds = request.GET.get('hub.lease_seconds', None)
     challenge = request.GET.get('hub.challenge', None)
+    response = Response(challenge)
 
     if mode == 'denied':
         return subscriber.temp_storage.pop(callback_id)
     elif mode in ['subscribe', 'unsubscribe']:
         subscription_request = subscriber.temp_storage.pop(callback_id)
+        if not subscription_request:
+            return response
+
         if mode != subscription_request['mode']:
             raise exc.exception_response(404)
         if topic_url != subscription_request['topic_url']:
@@ -278,7 +306,6 @@ def callback_handler(request):
         else:  # unsubscribe
             del subscriber.storage[callback_id]
 
-        response = Response(challenge)
         return response
     else:
         raise exc.exception_response(400)
@@ -373,6 +400,20 @@ elements.
 
     response = Response(dumps(jrd, default=json_serializer))
     response.headers['Content-Type'] = 'application/json'
+
+    #Create a publisher header dict, one for self and one for hub
+    #Link: <http://pub.websub.local/md>; rel="self", <http://pub.websub.local/hub>; rel="hub"
+    hub_url = config.hub_url
+    if hub_url:
+      log.debug("hub_url: {}".format(hub_url))
+      #path = "/.well-known/webfinger"
+      path = request.path_qs
+      pub = {
+        'self': config.public_url.strip('/') + path,
+        'hub': hub_url
+      }
+      h = ', '.join([ "<"+v+">; rel=\""+k+"\"" for k,v in pub.items() ])
+      response.headers['Link'] = h
 
     return response
 

@@ -35,7 +35,7 @@ class Fetch(threading.Thread):
 
     def run(self):
         while not self.halt:
-            log.debug("waiting for pool {}....".format(self._id))
+            #log.debug("waiting for pool {}....".format(self._id))
             with self.pool:
                 url = self.request.get()
                 if url is not None:

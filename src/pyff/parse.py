@@ -1,4 +1,6 @@
 import os
+import json
+import re
 from .utils import parse_xml, root, first_text, unicode_stream, find_matching_files
 from .constants import NS
 from .logs import get_log
@@ -102,8 +104,43 @@ class XRDParser(PyffParser):
         resource.never_expires = True
         return info
 
+class WebfingerParser(PyffParser):
+    def __init__(self):
+        pass
 
-_parsers = [XRDParser(), DirectoryParser(['xml']), NoParser()]
+    def __str__(self):
+        return "Webfinger"
+
+    def magic(self, content):
+        #log.debug("Webfinger magic")
+        try:
+            wf = json.loads(content)
+            is_wf = wf.get('links', None) != None
+            log.debug("is_wf: {}".format(is_wf))
+            return is_wf
+        except Exception as e:
+            return False
+
+    def parse(self, resource, content):
+        #log.debug("Webfinger parse: {}".format(content))
+        wf = json.loads(content)
+        info = dict()
+        info['Description'] = "Webfinger links"
+        info['Expiration Time'] = wf['expires']
+        links = wf.get('links', [])
+        for l in links:
+            href = l.get('href', None)
+            if (l['rel'] == "urn:oasis:names:tc:SAML:2.0:metadata" and
+                l['type'] == "application/xml" and
+                # http://mdq.websub.local/entities/{sha1}73fe06af9182ada0c1275179bb1491bea33552de.xml
+                re.match('^http.+/entities/.+.xml$', href)):
+                log.debug("Webfinger adding {}".format(href))
+                resource.add_child(href)
+        resource.last_seen = datetime.now()
+        resource.expire_time = datetime.fromisoformat(wf['expires'])
+        return info
+
+_parsers = [XRDParser(), DirectoryParser(['xml']), WebfingerParser(), NoParser()]
 
 
 def add_parser(parser):

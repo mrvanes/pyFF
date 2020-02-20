@@ -639,7 +639,7 @@ def mirror(req, *opts):
 
     .. code-block:: yaml
 
-        - mirror
+        - mirror:
           - http://example.com/.well-known/webfinger
 
     """

@@ -125,17 +125,17 @@ A delayed pipeline callback used as a post for parse_saml_metadata
         return self
 
     def __call__(self, *args, **kwargs):
-        log.debug("{!s}: called".format(self.plumbing))
+        #log.debug("{!s}: called".format(self.plumbing))
         t = args[0]
         if t is None:
             raise ValueError("PipelineCallback must be called with a parse-tree argument")
         try:
             state = kwargs
             state[self.entry_point] = True
-            log.debug("state: {}".format(repr(state)))
+            #log.debug("state: {}".format(repr(state)))
             return self.plumbing.process(self.req.md, store=self.store, state=state, t=t)
         except Exception as ex:
-            log.debug(traceback.format_exc())
+            #log.debug(traceback.format_exc())
             log.error(ex)
             raise ex
 
@@ -261,7 +261,7 @@ may modify any of the fields.
         for p in self.pipeline:
             try:
                 pipefn, opts, name, args = load_pipe(p)
-                log.debug("{!s}: calling '{}' using args: {} and opts: {}".format(self.pipeline, name, repr(args), repr(opts)))
+                #log.debug("{!s}: calling '{}' using args: {} and opts: {}".format(self.pipeline, name, repr(args), repr(opts)))
                 if is_text(args):
                     args = [args]
                 if args is not None and type(args) is not dict and type(args) is not list and type(args) is not tuple:
@@ -274,7 +274,7 @@ may modify any of the fields.
                 if req.done:
                     break
             except BaseException as ex:
-                log.debug(traceback.format_exc())
+                #log.debug(traceback.format_exc())
                 log.error(ex)
                 req.exception = ex
                 if req.raise_exceptions:

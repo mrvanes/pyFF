@@ -213,16 +213,19 @@ class Resource(Watchable):
         return self.walk()
 
     def __eq__(self, other):
+        #return self.url == other.url or self.info['Resource'] == other.url
         return self.url == other.url
 
     def __contains__(self, item):
         return item in self.children
 
     def get(self, url):
-        for c in self.children:
+        for c in self.walk():
+            log.debug("Resource.get.url: {}".format(c.url))
             if c.url == url:
                 return c
-        raise ValueError("Resource {} not present".format(url))
+        #raise ValueError("Resource {} not present".format(url))
+        return None
 
     def walk(self):
         if self.url is not None:
@@ -245,6 +248,7 @@ class Resource(Watchable):
 
     def _replace(self, r):
         for i in range(0, len(self.children)):
+            #if self.children[i].url == r.url or self.children[i].info['Resource'] == r.url:
             if self.children[i].url == r.url:
                 self.children[i] = r
                 return
@@ -280,7 +284,6 @@ class Resource(Watchable):
     def parse(self, getter):
         #info = dict()
         info = self.info
-        info['Resource'] = self.url
         self.add_info(info)
         data = None
         log.debug("getting {}".format(self.url))
@@ -321,19 +324,23 @@ class Resource(Watchable):
                     log.debug("Something went wrong while subscribing: {}".format(e))
             else:
                 try:
-                    # This would be a good time to renew subscription?
+                    # Would this be a good time to renew subscription?
                     log.debug("Trying renew {}".format(callback_id))
                     callback_id = subscriber.renew(callback_id)
                     log.debug('Renew callback_id: {}'.format(callback_id))
                     info['callback_id'] = callback_id
                 except Exception as e:
                     log.debug("Something went wrong while renewing: {}".format(e))
-            # We need to update self.url if self pointed to different url!
+            # We need to update self.url because self may point to different url!
             self.url = topic_url
+
+        info['Resource'] = self.url
 
         parse_info = parse_resource(self, data)
         if parse_info is not None and isinstance(parse_info, dict):
             info.update(parse_info)
+
+        log.debug("Resource info: {}".format(info))
 
         if self.t is not None:
             self.last_seen = datetime.now()
