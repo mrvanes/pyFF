@@ -830,6 +830,7 @@ class Lambda(object):
 
 @contextlib.contextmanager
 def non_blocking_lock(lock=threading.Lock(), exception_class=ResourceException, args=("Resource is busy",)):
+    # Blocking=True prevents failing reloads on notify callback
     if not lock.acquire(blocking=False):
         raise exception_class(*args)
     try:

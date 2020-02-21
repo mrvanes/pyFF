@@ -250,11 +250,11 @@ def callback_handler(request):
         subscription = subscriber.storage[callback_id]
         if subscription == None:
             log.debug("callback_id not found {}".format(callback_id))
-            response = Response('callback_id not found!\n')
-            return response
-        topic_url = subscription.get('topic_url', None)
+            raise exc.exception_response(410)
+            #response = Response('callback_id not found!\n')
+            #return response
 
-        request.registry.md.rm.reload(url=topic_url)
+        topic_url = subscription.get('topic_url', None)
 
         log.debug("updating resource: {}".format(topic_url))
         resource = request.registry.md.rm.find(topic_url)
@@ -265,8 +265,8 @@ def callback_handler(request):
 
         for entity in entities:
             log.debug("updating entity: {}".format(entity))
-            params = { 'topic': config.public_url.strip("/") + "/entities/" + entity }
-            r = url_post(config.hub_update, params)
+            #params = { 'topic': config.public_url.strip("/") + "/entities/" + entity }
+            #r = url_post(config.hub_update, params)
             params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entity) }
             r = url_post(config.hub_update, params)
 
@@ -275,6 +275,12 @@ def callback_handler(request):
             #params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
             #url_post(config.hub_update, params)
             pass
+
+        try:
+            #pass
+            request.registry.md.rm.reload(url=topic_url)
+        except Exception as e:
+            log.debug("Reload failed: {}".format(e))
 
         response = Response('Content Received!\n')
         return response

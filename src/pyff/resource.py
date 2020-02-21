@@ -194,7 +194,8 @@ class Resource(Watchable):
                     children = c
                     break
 
-        with non_blocking_lock(self.lock):
+        #with non_blocking_lock(self.lock):
+        if True:
             if fail_on_error:
                 for r in self.walk():
                     r.parse(url_get)

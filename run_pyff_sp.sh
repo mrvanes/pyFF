@@ -4,11 +4,13 @@
     --log-config examples/debug.ini \
     --bind 0.0.0.0:80 \
     --workers 1 \
-    --threads 4 \
-    --worker-tmp-dir=/dev/shm \
+    --threads 8 \
+    --worker-tmp-dir /dev/shm \
+    --preload \
+    --worker-class gthread \
     -e PYFF_HUB_URL=http://hub.websub.local/hub \
     -e PYFF_HUB_UPDATE=http://hub.websub.local/update \
     -e PYFF_PUBLIC_URL=http://sp.websub.local/ \
     -e PYFF_PIPELINE=sp.fd \
-    -e PYFF_WORKER_POOL_SIZE=4 \
+    -e PYFF_WORKER_POOL_SIZE=8 \
     pyff.wsgi:app

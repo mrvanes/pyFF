@@ -1,7 +1,7 @@
 - when update:
   - load:
       - http://idp.websub.local/idp.xml
-      - http://idp.websub.local/edugain-10.xml
+      - http://idp.websub.local/edugain-200.xml
 - when request:
   - select:
   - pipe:
