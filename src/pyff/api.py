@@ -234,8 +234,8 @@ def update_handler(request):
             url_post(config.hub_update, params)
 
             # Send updates for the webfinger endpoint?
-            params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
-            url_post(config.hub_update, params)
+            #params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
+            #url_post(config.hub_update, params)
 
     response = Response("OK\n")
     return response
@@ -271,10 +271,10 @@ def callback_handler(request):
             r = url_post(config.hub_update, params)
 
         if entities:
-            pass
             # Update webfinger endpoint?
-            params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
-            url_post(config.hub_update, params)
+            #params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
+            #url_post(config.hub_update, params)
+            pass
 
         response = Response('Content Received!\n')
         return response

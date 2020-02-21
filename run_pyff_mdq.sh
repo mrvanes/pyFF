@@ -10,5 +10,5 @@
     -e PYFF_HUB_UPDATE=http://hub.websub.local/update \
     -e PYFF_PUBLIC_URL=http://mdq.websub.local/ \
     -e PYFF_PIPELINE=mdq.fd \
-    -e PYFF_WORKER_POOL_SIZE=1 \
+    -e PYFF_WORKER_POOL_SIZE=4 \
     pyff.wsgi:app

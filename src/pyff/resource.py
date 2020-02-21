@@ -309,8 +309,6 @@ class Resource(Watchable):
         else:
             raise ResourceException("Got status={:d} while getting {}".format(r.status_code, self.url))
 
-        log.debug("Resource {} info before: {}".format(self.url, info))
-
         # Discover websub topic and hub urls and subscribe to topic, if possible
         links = r.links
         request = {}
@@ -348,13 +346,9 @@ class Resource(Watchable):
             #self.url = topic_url
             info['topic_url'] = topic_url
 
-        #info['Resource'] = self.url
-
         parse_info = parse_resource(self, data)
         if parse_info is not None and isinstance(parse_info, dict):
             info.update(parse_info)
-
-        log.debug("Resource {}, info after: {}".format(self.url, info))
 
         if self.t is not None:
             self.last_seen = datetime.now()
