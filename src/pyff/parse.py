@@ -1,7 +1,8 @@
 import os
 import json
 import re
-from .utils import parse_xml, root, first_text, unicode_stream, find_matching_files
+import time
+from .utils import parse_xml, root, first_text, unicode_stream, find_matching_files, iso2datetime
 from .constants import NS
 from .logs import get_log
 from xmlsec.crypto import CertDict
@@ -136,8 +137,9 @@ class WebfingerParser(PyffParser):
                 re.match('^http.+/entities/.+.xml$', href)):
                 log.debug("Webfinger adding {}".format(href))
                 resource.add_child(href)
+                #time.sleep(0.1)
         resource.last_seen = datetime.now()
-        resource.expire_time = datetime.fromisoformat(wf['expires'])
+        resource.expire_time = iso2datetime(wf['expires'])
         return info
 
 _parsers = [XRDParser(), DirectoryParser(['xml']), WebfingerParser(), NoParser()]

@@ -6,6 +6,7 @@ An abstraction layer for metadata fetchers. Supports both syncronous and asyncro
 
 from .logs import get_log
 import os
+import time
 import requests
 from .constants import config
 from datetime import datetime
@@ -65,6 +66,8 @@ class URLHandler(object):
         for t in things:
             self.pending[self.thing_to_url(t)] = t
             self.fetcher.schedule(self.thing_to_url(t))
+            # Real lazy loading
+            #time.sleep(0.3)
 
     def i_handle(self, t, url=None, response=None, exception=None, last_fetched=None):
         raise NotImplementedError()
@@ -223,7 +226,7 @@ class Resource(Watchable):
 
     def find(self, url):
         for c in self.walk():
-            log.debug("Resource.get.url: {}".format(c.url))
+            #log.debug("Resource.find url: {}".format(c.url))
             if c.info.get('topic_url', None) == url:
                 return c
         #raise ValueError("Resource {} not present".format(url))

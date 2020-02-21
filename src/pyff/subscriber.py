@@ -124,8 +124,7 @@ class SimpleSubscriberStorage(AbstractSubscriberStorage):
         self.store[callback_id] = subscription
 
     def items(self):
-        for s in self.store.items():
-            yield s
+        return self.store.items()
 
     def close_to_expiration(self, margin_in_seconds):
         now = datetime.utcnow()
@@ -183,9 +182,9 @@ class SimpleTempSubscriberStorage(AbstractTempSubscriberStorage):
     def cleanup(self):
         log.debug("SimpleTempSubscriberStorage cleanup")
         now = datetime.utcnow()
-        for id in self.store.items():
-            if id['expiration_time'] > now:
-                self.store.pop(id)
+        for item in self.store.items():
+            if item['expiration_time'] > now:
+                self.store.pop(item)
 
     def pop(self, callback_id):
         if callback_id in self.store:
