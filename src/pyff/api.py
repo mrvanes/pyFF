@@ -233,9 +233,9 @@ def update_handler(request):
             params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entry) }
             url_post(config.hub_update, params)
 
-            # Send updates for the webfinger endpoint
-            #params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
-            #url_post(config.hub_update, params)
+            # Send updates for the webfinger endpoint?
+            params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
+            url_post(config.hub_update, params)
 
     response = Response("OK\n")
     return response
@@ -257,7 +257,7 @@ def callback_handler(request):
         request.registry.md.rm.reload(url=topic_url)
 
         log.debug("updating resource: {}".format(topic_url))
-        resource = request.registry.md.rm.get(topic_url)
+        resource = request.registry.md.rm.find(topic_url)
         if isinstance(resource, Resource):
             entities = resource.info.get('Entities', [])
         else:
@@ -272,9 +272,9 @@ def callback_handler(request):
 
         if entities:
             pass
-            # Update webfinger endpoint
-            #params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
-            #url_post(config.hub_update, params)
+            # Update webfinger endpoint?
+            params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
+            url_post(config.hub_update, params)
 
         response = Response('Content Received!\n')
         return response

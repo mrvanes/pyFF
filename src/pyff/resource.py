@@ -186,8 +186,10 @@ class Resource(Watchable):
         children = self.children
         if url:
             for c in self.walk():
-                if c.url == url:
+                #if c.url == url:
+                if c.info.get('topic_url', None) == url:
                     children = c
+                    break
 
         with non_blocking_lock(self.lock):
             if fail_on_error:
@@ -219,10 +221,10 @@ class Resource(Watchable):
     def __contains__(self, item):
         return item in self.children
 
-    def get(self, url):
+    def find(self, url):
         for c in self.walk():
             log.debug("Resource.get.url: {}".format(c.url))
-            if c.url == url:
+            if c.info.get('topic_url', None) == url:
                 return c
         #raise ValueError("Resource {} not present".format(url))
         return None
@@ -261,8 +263,10 @@ class Resource(Watchable):
         opts.update(kwargs)
         r = Resource(url, **opts)
         if r in self.children:
+            log.debug("replace {}".format(url))
             self._replace(r)
         else:
+            log.debug("append {}".format(url))
             self.children.append(r)
 
         return r
@@ -285,6 +289,7 @@ class Resource(Watchable):
         #info = dict()
         info = self.info
         self.add_info(info)
+        info['Resource'] = self.url
         data = None
         log.debug("getting {}".format(self.url))
 
@@ -301,6 +306,8 @@ class Resource(Watchable):
         else:
             raise ResourceException("Got status={:d} while getting {}".format(r.status_code, self.url))
 
+        log.debug("Resource {} info before: {}".format(self.url, info))
+
         # Discover websub topic and hub urls and subscribe to topic, if possible
         links = r.links
         request = {}
@@ -311,8 +318,11 @@ class Resource(Watchable):
 
         topic_url = request.get('topic_url', None)
         hub_url = request.get('hub_url', None)
+
         if topic_url and hub_url:
-            callback_id = info.get('callback_id', None)
+            #find callback_id for topic_url
+            callback_id = subscriber.find(topic_url)
+            #callback_id = info.get('callback_id', None)
             log.debug("callback_id: {}".format(callback_id))
             if callback_id == None:
                 try:
@@ -332,15 +342,16 @@ class Resource(Watchable):
                 except Exception as e:
                     log.debug("Something went wrong while renewing: {}".format(e))
             # We need to update self.url because self may point to different url!
-            self.url = topic_url
+            #self.url = topic_url
+            info['topic_url'] = topic_url
 
-        info['Resource'] = self.url
+        #info['Resource'] = self.url
 
         parse_info = parse_resource(self, data)
         if parse_info is not None and isinstance(parse_info, dict):
             info.update(parse_info)
 
-        log.debug("Resource info: {}".format(info))
+        log.debug("Resource {}, info after: {}".format(self.url, info))
 
         if self.t is not None:
             self.last_seen = datetime.now()

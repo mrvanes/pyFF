@@ -88,6 +88,11 @@ class AbstractSubscriberStorage(metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
+    def items(self):
+        """iter
+        """
+
+    @abc.abstractmethod
     def close_to_expiration(self, margin_in_seconds):
         """Return an iterator of subscriptions that are near (or already past)
         their expiration time. margin_in_seconds specifies what 'near' is.
@@ -117,6 +122,10 @@ class SimpleSubscriberStorage(AbstractSubscriberStorage):
         now = datetime.utcnow()
         subscription['expiration_time'] = now + timedelta(seconds = subscription['timeout'])
         self.store[callback_id] = subscription
+
+    def items(self):
+        for s in self.store.items():
+            yield s
 
     def close_to_expiration(self, margin_in_seconds):
         now = datetime.utcnow()
@@ -162,7 +171,7 @@ class AbstractTempSubscriberStorage(metaclass=abc.ABCMeta):
         """
 
 
-class SimpleTempSubscriberStorage():
+class SimpleTempSubscriberStorage(AbstractTempSubscriberStorage):
     def __init__(self):
         self.store = {}
 
@@ -355,5 +364,12 @@ class Subscriber(object):
 
     def cleanup(self):
         self.temp_storage.cleanup()
+
+    def find(self, topic_url):
+        for callback_id, sub in self.storage.items():
+            if sub['topic_url'] == topic_url:
+                return callback_id
+        return None
+
 
 subscriber = Subscriber(SimpleSubscriberStorage(), SimpleTempSubscriberStorage())
