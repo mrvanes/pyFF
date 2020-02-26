@@ -31,7 +31,7 @@ import six
 import ipaddr
 from pyff.pipes import registry
 from six.moves.urllib_parse import quote_plus
-
+from .subscriber import subscriber
 
 __author__ = 'leifj'
 
@@ -607,7 +607,9 @@ def load(req, *opts):
 
         while len(r) > 0:
             elt = r.pop(0)
-            if elt in ("as", "verify", "via", "cleanup"):
+            if elt == "mirror":
+                params['mirror'] = True
+            elif elt in ("as", "verify", "via", "cleanup"):
                 if len(r) > 0:
                     if elt in ("via", "cleanup"):
                         params[elt].append(r.pop(0))
@@ -631,6 +633,10 @@ def load(req, *opts):
 
     log.debug("Refreshing all resources")
     req.md.rm.reload(fail_on_error=bool(opts['fail_on_error']))
+    log.debug("Resource tree")
+    req.md.rm.tree()
+    log.debug("Subscriber")
+    log.debug(subscriber)
 
 @pipe
 def mirror(req, *opts):
@@ -667,11 +673,16 @@ def mirror(req, *opts):
                 l['type'] == "application/xml" and
                 # http://mdq.websub.local/entities/{sha1}73fe06af9182ada0c1275179bb1491bea33552de.xml
                 re.match('^http.+/entities/.+.xml$', href)):
-                log.debug("Mirror loading {}".format(href))
-                req.md.rm.add_child(href)
+                fp = l.get('fp', None)
+                log.debug("Mirror loading {}, {}".format(href, fp))
+                req.md.rm.add_child(href, fp=fp)
 
     log.debug("Refreshing all resources")
-    req.md.rm.reload(fail_on_error=True)
+    req.md.rm.reload()
+    log.debug("Resource tree")
+    req.md.rm.tree()
+    log.debug("Subscriber")
+    log.debug(subscriber)
 
 def _select_args(req):
     args = req.args

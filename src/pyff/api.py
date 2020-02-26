@@ -234,8 +234,8 @@ def update_handler(request):
             url_post(config.hub_update, params)
 
             # Send updates for the webfinger endpoint?
-            #params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
-            #url_post(config.hub_update, params)
+            params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
+            url_post(config.hub_update, params)
 
     response = Response("OK\n")
     return response
@@ -251,17 +251,34 @@ def callback_handler(request):
         if subscription == None:
             log.debug("callback_id not found {}".format(callback_id))
             raise exc.exception_response(410)
-            #response = Response('callback_id not found!\n')
-            #return response
 
+        response = Response('Content Received!\n')
         topic_url = subscription.get('topic_url', None)
 
         log.debug("updating resource: {}".format(topic_url))
         resource = request.registry.md.rm.find(topic_url)
+
+        # IMPORTANT First reload, then notify otherwise
+        # Downstream will see stale resource!!
+        try:
+            # TODO This is weird!
+            # This works:
+            request.registry.md.rm.reload(url=topic_url)
+            # But this doesn't?
+            #resource.reload()
+        except Exception as e:
+            log.debug("Reload failed: {}".format(e))
+
         if isinstance(resource, Resource):
             entities = resource.info.get('Entities', [])
         else:
             entities = []
+
+        if entities:
+            # Update webfinger endpoint?
+            params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
+            url_post(config.hub_update, params)
+            #pass
 
         for entity in entities:
             log.debug("updating entity: {}".format(entity))
@@ -270,19 +287,9 @@ def callback_handler(request):
             params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entity) }
             r = url_post(config.hub_update, params)
 
-        if entities:
-            # Update webfinger endpoint?
-            #params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
-            #url_post(config.hub_update, params)
-            pass
+        #log.debug("Resource tree")
+        #request.registry.md.rm.tree()
 
-        try:
-            #pass
-            request.registry.md.rm.reload(url=topic_url)
-        except Exception as e:
-            log.debug("Reload failed: {}".format(e))
-
-        response = Response('Content Received!\n')
         return response
 
     mode = request.GET.get('hub.mode', None)
@@ -376,7 +383,7 @@ elements.
     else:
         rel = [rel]
 
-    def _links(url, title=None):
+    def _links(url, title=None, fp=''):
         if url.startswith('/'):
             url = url.lstrip('/')
         for r in rel:
@@ -385,7 +392,8 @@ elements.
                 suffix = _dflt_rels[r][0]
             links.append(dict(rel=r,
                               type=_dflt_rels[r][1],
-                              href='%s/%s%s' % (request.host_url, url, suffix)
+                              href='%s/%s%s' % (request.host_url, url, suffix),
+                              fp=fp
                               )
                          )
 
@@ -395,9 +403,11 @@ elements.
             _links(a)
 
     for entity in request.registry.md.store.lookup('entities'):
+        e_hash = hash_id(''.join(s.strip() for s in entity.itertext()))
         entity_display = entity_display_name(entity)
+        #log.debug("entity: {}, {}".format(entity_display, e_hash))
         _links("/entities/%s" % hash_id(entity.get('entityID')),
-               title=entity_display)
+               title=entity_display, fp=e_hash)
 
     aliases = request.registry.aliases
     for a in aliases.keys():

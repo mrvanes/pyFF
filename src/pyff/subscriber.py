@@ -191,6 +191,10 @@ class SimpleTempSubscriberStorage(AbstractTempSubscriberStorage):
             return self.store.pop(callback_id)
         return None
 
+    def items(self):
+        return self.store.items()
+
+
 class Subscriber(object):
     """A subscriber takes the following constructor arguments:
 
@@ -235,6 +239,15 @@ class Subscriber(object):
         self.storage = storage
         self.temp_storage = temp_storage
         self.config = config
+
+    def __str__(self):
+        r = ''
+        for callback_id, item in self.storage.items():
+          r += "[{}] {}\n".format(callback_id, item.get('topic_url', 'empty'))
+        r += '---'
+        for callback_id, item in self.temp_storage.items():
+          r += "[{}] {}\n".format(callback_id, item.get('topic_url', 'empty'))
+        return r
 
     def subscribe(self, **subscription_request):
         """Subscribe to a certain topic. All arguments are keyword arguments.

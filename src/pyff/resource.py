@@ -64,10 +64,13 @@ class URLHandler(object):
 
     def i_schedule(self, things):
         for t in things:
+            #log.debug("i_schedule info {}".format(t.info))
+            #log.debug("i_schedule opts {}".format(t.opts))
             self.pending[self.thing_to_url(t)] = t
             self.fetcher.schedule(self.thing_to_url(t))
-            # Real lazy loading
-            #time.sleep(0.3)
+            if t.info.get('mirror', False):
+                log.debug("t was mirror, canceling scheduler")
+                break
 
     def i_handle(self, t, url=None, response=None, exception=None, last_fetched=None):
         raise NotImplementedError()
@@ -117,12 +120,26 @@ class ResourceHandler(URLHandler):
         return t.url
 
     def i_handle(self, t, url=None, response=None, exception=None, last_fetched=None):
+
         try:
             if exception is not None:
                 t.info['Exception'] = exception
             else:
+                log.debug("ResourceHandler parsing resource for {}".format(t.url))
                 children = t.parse(lambda u: response)
-                self.i_schedule(children)
+                #log.debug("t fp {}".format(t.fp))
+                if t.info.get('mirror'):
+                    for c in children:
+                        #log.debug("c {} opts {}".format(c.url, c.opts))
+                        # This is where we know we need to fetch new md
+                        if t.fp.get(c.url, False) != c.opts.get('fp', None):
+                            c.opts['fp'] = t.fp.get(c.url, None)
+                            self.i_schedule(c)
+                            log.debug("scheduled c")
+                        else:
+                            log.debug("skipped c")
+                else:
+                    self.i_schedule(children)
         except BaseException as ex:
             log.warn(ex)
             t.info['Exception'] = ex
@@ -142,6 +159,7 @@ class Resource(Watchable):
         self.last_parser = None
         self._infos = deque(maxlen=config.info_buffer_size)
         self.children = deque()
+        self.fp = dict()
         self._setup()
 
     def _setup(self):
@@ -161,7 +179,9 @@ class Resource(Watchable):
 
             if self.url.startswith('file://') or self.url.startswith('dir://'):
                 self.never_expires = True
-
+        if self.opts.get('mirror', False):
+            self.add_info({'mirror': self.opts.get('mirror', False)})
+            del self.opts['mirror']
         self.lock = Lock()
 
     def __getstate__(self):
@@ -186,13 +206,9 @@ class Resource(Watchable):
                ",".join(["{}={}".format(k, v) for k, v in list(self.opts.items())])
 
     def reload(self, fail_on_error=False, url=None):
-        children = self.children
-        if url:
-            for c in self.walk():
-                #if c.url == url:
-                if c.info.get('topic_url', None) == url:
-                    children = c
-                    break
+        me = self.find(url)
+
+        log.debug("Reloading {}".format(me.url if me.url else '(root)'))
 
         #with non_blocking_lock(self.lock):
         if True:
@@ -201,7 +217,7 @@ class Resource(Watchable):
                     r.parse(url_get)
             else:
                 rp = ResourceHandler(name="Metadata")
-                rp.schedule(children)
+                rp.schedule(me)
                 try:
                     rp.done.acquire()
                     rp.done.wait()
@@ -228,7 +244,15 @@ class Resource(Watchable):
     def find(self, url):
         for c in self.walk():
             #log.debug("Resource.find url: {}".format(c.url))
-            if c.info.get('topic_url', None) == url:
+            if c.info.get('topic_url', False) == url:
+                return c
+        #raise ValueError("Resource {} not present".format(url))
+        return self
+
+    def get(self, url):
+        for c in self.walk():
+            #log.debug("Resource.find url: {}".format(c.url))
+            if c.url == url:
                 return c
         #raise ValueError("Resource {} not present".format(url))
         return None
@@ -239,6 +263,16 @@ class Resource(Watchable):
         for c in self.children:
             for cn in c.walk():
                 yield cn
+
+    def tree(self, indent=""):
+        log.debug("{}{}".format(indent, self.url if self.url else '(root)'))
+        log.debug("{}({})".format(indent, self.info.get('topic_url', '(root)')))
+        log.debug("{}[{}]".format(indent, self.info))
+        log.debug("{}[{}]".format(indent, self.opts))
+        for e in self.info.get('Entities', []):
+            log.debug("{} - {}".format(indent, e))
+        for c in self.children:
+            c.tree(indent + "  ")
 
     def is_expired(self):
         if self.never_expires:
@@ -261,17 +295,30 @@ class Resource(Watchable):
         raise ValueError("Resource {} not present - use add_child".format(r.url))
 
     def add_child(self, url, **kwargs):
+        #log.debug("add_child kwargs {}".format(kwargs))
         opts = deepcopy(self.opts)
+        opts.update(kwargs)
         if 'as' in opts:
             del opts['as']
-        opts.update(kwargs)
-        r = Resource(url, **opts)
-        if r in self.children:
-            log.debug("replace {}".format(url))
-            self._replace(r)
+        fp = kwargs.get('fp', None)
+        if fp:
+            # Keep track of child's fingerprint
+            self.fp[url] = fp
+            # Don't set fp until we have actually parsed the child
+            del opts['fp']
+        r = self.get(url)
+        #if isinstance(r, Resource):
+            #log.debug("r opts {}".format(r.opts.get('fp')))
+        if isinstance(r, Resource) and r.opts.get('fp', None) == fp:
+            log.debug("keep {}".format(url))
         else:
-            log.debug("append {}".format(url))
-            self.children.append(r)
+            r = Resource(url, **opts)
+            if r in self.children:
+                log.debug("replace {}".format(url))
+                self._replace(r)
+            else:
+                log.debug("append {}".format(url))
+                self.children.append(r)
 
         return r
 
@@ -295,8 +342,8 @@ class Resource(Watchable):
         self.add_info(info)
         info['Resource'] = self.url
         data = None
-        log.debug("getting {}".format(self.url))
 
+        #log.debug("Parsing {}".format(self.url))
         r = getter(self.url)
 
         info['HTTP Response Headers'] = r.headers
@@ -325,19 +372,19 @@ class Resource(Watchable):
             #find callback_id for topic_url
             callback_id = subscriber.find(topic_url)
             #callback_id = info.get('callback_id', None)
-            log.debug("callback_id: {}".format(callback_id))
+            #log.debug("callback_id: {}".format(callback_id))
             if callback_id == None:
                 try:
-                    log.debug("Trying subscribe")
+                    #log.debug("Trying subscribe {}".format(topic_url))
                     callback_id = subscriber.subscribe(**request)
                     info['callback_id'] = callback_id
-                    log.debug('subscribed callback_id: {}'.format(callback_id))
+                    log.debug('Subscribed callback_id: {}'.format(callback_id))
                 except Exception as e:
                     log.debug("Something went wrong while subscribing: {}".format(e))
             else:
                 try:
                     # Would this be a good time to renew subscription?
-                    log.debug("Trying renew {}".format(callback_id))
+                    #log.debug("Trying renew {}".format(callback_id))
                     callback_id = subscriber.renew(callback_id)
                     log.debug('Renew callback_id: {}'.format(callback_id))
                     info['callback_id'] = callback_id

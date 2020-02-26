@@ -135,9 +135,10 @@ class WebfingerParser(PyffParser):
                 l['type'] == "application/xml" and
                 # http://mdq.websub.local/entities/{sha1}73fe06af9182ada0c1275179bb1491bea33552de.xml
                 re.match('^http.+/entities/.+.xml$', href)):
-                log.debug("Webfinger adding {}".format(href))
-                resource.add_child(href)
-                #time.sleep(0.1)
+                fp = l.get('fp', None)
+                log.debug("Webfinger adding {}, {}".format(href, fp))
+                #resource.fp[href] = fp
+                resource.add_child(href, fp=fp)
         resource.last_seen = datetime.now()
         resource.expire_time = iso2datetime(wf['expires'])
         return info
