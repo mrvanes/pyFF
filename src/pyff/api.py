@@ -255,40 +255,8 @@ def callback_handler(request):
         response = Response('Content Received!\n')
         topic_url = subscription.get('topic_url', None)
 
-        log.debug("updating resource: {}".format(topic_url))
-        resource = request.registry.md.rm.find(topic_url)
-
-        # IMPORTANT First reload, then notify otherwise
-        # Downstream will see stale resource!!
-        try:
-            # TODO This is weird!
-            # This works:
-            request.registry.md.rm.reload(url=topic_url)
-            # But this doesn't?
-            #resource.reload()
-        except Exception as e:
-            log.debug("Reload failed: {}".format(e))
-
-        if isinstance(resource, Resource):
-            entities = resource.info.get('Entities', [])
-        else:
-            entities = []
-
-        if entities:
-            # Update webfinger endpoint?
-            params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
-            url_post(config.hub_update, params)
-            #pass
-
-        for entity in entities:
-            log.debug("updating entity: {}".format(entity))
-            #params = { 'topic': config.public_url.strip("/") + "/entities/" + entity }
-            #r = url_post(config.hub_update, params)
-            params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entity) }
-            r = url_post(config.hub_update, params)
-
-        #log.debug("Resource tree")
-        #request.registry.md.rm.tree()
+        t = threading.Thread(target=handle_reload, args=(request, topic_url))
+        t.start()
 
         return response
 
@@ -322,6 +290,44 @@ def callback_handler(request):
         return response
     else:
         raise exc.exception_response(400)
+
+
+def handle_reload(request, topic_url):
+    log.debug("Updating resource: {}".format(topic_url))
+    resource = request.registry.md.rm.find(topic_url)
+
+    # IMPORTANT First reload, then notify otherwise
+    # Downstream will see stale resource!!
+    # We should execute this in background!
+    try:
+        # TODO This is weird!
+        # This works:
+        request.registry.md.rm.reload(url=topic_url)
+        # But this doesn't?
+        #resource.reload()
+    except Exception as e:
+        log.debug("Reload failed: {}".format(e))
+
+    if isinstance(resource, Resource):
+        entities = resource.info.get('Entities', [])
+    else:
+        entities = []
+
+    if entities:
+        # Update webfinger endpoint?
+        params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
+        url_post(config.hub_update, params)
+        #pass
+
+    for entity in entities:
+        log.debug("updating entity: {}".format(entity))
+        #params = { 'topic': config.public_url.strip("/") + "/entities/" + entity }
+        #r = url_post(config.hub_update, params)
+        params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entity) }
+        r = url_post(config.hub_update, params)
+
+    #log.debug("Resource tree")
+    #request.registry.md.rm.tree()
 
 
 def webfinger_handler(request):
