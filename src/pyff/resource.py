@@ -160,6 +160,8 @@ class Resource(Watchable):
         self._infos = deque(maxlen=config.info_buffer_size)
         self.children = deque()
         self.fp = dict()
+        self.e_hash = dict()
+        self.e_notify = dict()
         self._setup()
 
     def _setup(self):
@@ -309,7 +311,8 @@ class Resource(Watchable):
         r = self.get(url)
         #if isinstance(r, Resource):
             #log.debug("r opts {}".format(r.opts.get('fp')))
-        if isinstance(r, Resource) and r.opts.get('fp', None) == fp:
+        #if isinstance(r, Resource) and r.opts.get('fp', None) == fp:
+        if isinstance(r, Resource):
             log.debug("keep {}".format(url))
         else:
             r = Resource(url, **opts)

@@ -221,6 +221,9 @@ def update_handler(request):
         log.debug("info: {}".format(r.info))
         log.debug("url: {}".format(r.url))
         ents = r.info.get('Entities', [])
+
+        # We should only send updates for entities
+        # That actually changed
         if ents and entry in ents:
             log.debug("entry matched: {}".format(entry))
 
@@ -245,7 +248,7 @@ def callback_handler(request):
     callback_id = request.matchdict.get('callback_id', None)
     log.debug("callback_handler {}".format(callback_id))
 
-    # If this is POST this is an update request
+    # If this is POST this is an update notify
     if request.method == 'POST':
         subscription = subscriber.storage[callback_id]
         if subscription == None:
@@ -258,8 +261,10 @@ def callback_handler(request):
         t = threading.Thread(target=handle_reload, args=(request, topic_url))
         t.start()
 
+        # End of the POST
         return response
 
+    # It's GET
     mode = request.GET.get('hub.mode', None)
     topic_url = request.GET.get('hub.topic', None)
     lease_seconds = request.GET.get('hub.lease_seconds', None)
@@ -320,11 +325,15 @@ def handle_reload(request, topic_url):
         #pass
 
     for entity in entities:
-        log.debug("updating entity: {}".format(entity))
-        #params = { 'topic': config.public_url.strip("/") + "/entities/" + entity }
-        #r = url_post(config.hub_update, params)
-        params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entity) }
-        r = url_post(config.hub_update, params)
+        if resource.e_notify.get(entity, False):
+            log.debug("Notifying entity: {}".format(entity))
+            #params = { 'topic': config.public_url.strip("/") + "/entities/" + entity }
+            #r = url_post(config.hub_update, params)
+            params = { 'topic': config.public_url.strip("/") + "/entities/%s" % hash_id(entity) }
+            r = url_post(config.hub_update, params)
+            del resource.e_notify[entity]
+        else:
+            log.debug("Skipping entity: {}".format(entity))
 
     #log.debug("Resource tree")
     #request.registry.md.rm.tree()

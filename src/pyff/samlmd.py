@@ -160,7 +160,12 @@ class SAMLMetadataResourceParser(PyffParser):
 
             resource.info['Entities'] = []
             for e in iter_entities(t):
-                resource.info['Entities'].append(e.get('entityID'))
+                eID = e.get('entityID')
+                resource.info['Entities'].append(eID)
+                e_hash = hash_id(''.join(s.strip() for s in e.itertext()))
+                if resource.e_hash.get(eID) and resource.e_hash.get(eID) != e_hash:
+                    resource.e_notify[eID] = True
+                resource.e_hash[eID] = e_hash
 
         if exception is not None:
             resource.info['Exception'] = exception
