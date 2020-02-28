@@ -181,9 +181,9 @@ class Resource(Watchable):
 
             if self.url.startswith('file://') or self.url.startswith('dir://'):
                 self.never_expires = True
-        if self.opts.get('mirror', False):
-            self.add_info({'mirror': self.opts.get('mirror', False)})
-            del self.opts['mirror']
+        #if self.opts.get('mirror', False):
+            #self.add_info({'mirror': self.opts.get('mirror', False)})
+            #del self.opts['mirror']
         self.lock = Lock()
 
     def __getstate__(self):

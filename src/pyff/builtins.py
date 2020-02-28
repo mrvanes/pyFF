@@ -607,9 +607,10 @@ def load(req, *opts):
 
         while len(r) > 0:
             elt = r.pop(0)
-            if elt == "mirror":
-                params['mirror'] = True
-            elif elt in ("as", "verify", "via", "cleanup"):
+            #if elt == "mirror":
+                #params['mirror'] = True
+            #elif elt in ("as", "verify", "via", "cleanup"):
+            if elt in ("as", "verify", "via", "cleanup"):
                 if len(r) > 0:
                     if elt in ("via", "cleanup"):
                         params[elt].append(r.pop(0))
