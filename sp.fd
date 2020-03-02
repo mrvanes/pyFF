@@ -10,8 +10,8 @@
               cacheDuration: PT12H
               validUntil: P10D
           - sign:
-              key: metadata/sign.key
-              cert: metadata/sign.crt
+              key: sign.key
+              cert: sign.crt
           - emit application/xml
           - break
       - when accept application/json:
