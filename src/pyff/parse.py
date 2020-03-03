@@ -142,7 +142,7 @@ class WebfingerParser(PyffParser):
         resource.last_seen = datetime.now()
         resource.expire_time = iso2datetime(wf['expires'])
         # Make this a mirror to stop loading children recursively
-        resource.add_info({'mirror': True})
+        info['mirror'] = True
         return info
 
 _parsers = [XRDParser(), DirectoryParser(['xml']), WebfingerParser(), NoParser()]
