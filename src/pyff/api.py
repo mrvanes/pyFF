@@ -220,11 +220,12 @@ def update_handler(request):
         log.debug("r: {}".format(r))
         log.debug("info: {}".format(r.info))
         log.debug("url: {}".format(r.url))
-        ents = r.info.get('Entities', [])
+        entities = r.info.get('Entities', [])
+        old_count = r.info.get('Entcount', 0)
 
         # We should only send updates for entities
         # That actually changed
-        if ents and entry in ents:
+        if entities and entry in entities:
             log.debug("entry matched: {}".format(entry))
 
             # Refresh source MD for this URL Resource
@@ -237,8 +238,14 @@ def update_handler(request):
             url_post(config.hub_update, params)
 
             # Send updates for the webfinger endpoint?
-            params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
-            url_post(config.hub_update, params)
+            # Be carefull, we won't detect a concurrent add and delete!?
+            count = len(entities)
+            if count != old_count:
+                log.debug("Updating webfinger endpoint reload {}/{}".format(count, old_count))
+                params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
+                url_post(config.hub_update, params)
+            else:
+                log.debug("Skipping webfinger endpoint reload {}/{}".format(count, old_count))
 
     response = Response("OK\n")
     return response
@@ -315,14 +322,20 @@ def handle_reload(request, topic_url):
 
     if isinstance(resource, Resource):
         entities = resource.info.get('Entities', [])
+        old_count = resource.info.get('Entcount', 0)
     else:
         entities = []
 
     if entities:
         # Update webfinger endpoint?
-        params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
-        url_post(config.hub_update, params)
-        #pass
+        # Be carefull, we won't detect a concurrent add and delete!?
+        count = len(entities)
+        if count != old_count:
+            log.debug("Updating webfinger endpoint reload {}/{}".format(count, old_count))
+            params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
+            url_post(config.hub_update, params)
+        else:
+            log.debug("Skipping webfinger endpoint reload {}/{}".format(count, old_count))
 
     for entity in entities:
         if resource.e_notify.get(entity, False):

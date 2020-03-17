@@ -383,5 +383,5 @@ class Subscriber(object):
                 return callback_id
         return None
 
-
+# Create and reuse a global singleton instance
 subscriber = Subscriber(SimpleSubscriberStorage(), SimpleTempSubscriberStorage())

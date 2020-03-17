@@ -355,6 +355,9 @@ class Resource(Watchable):
         info['Status Code'] = str(r.status_code)
         info['Reason'] = r.reason
 
+        # Store entcount, so we can decide whether we need update in webfinger endpoint
+        info['Entcount'] = len(info.get('Entities', []))
+
         if r.ok:
             data = r.text
         else:
