@@ -20,7 +20,7 @@ from pyramid.events import NewRequest
 import requests
 import threading
 import pytz
-from .utils import url_get, url_post
+from .utils import url_get, url_post, hash_dict
 from .subscriber import subscriber, parse_lease_seconds
 from .resource import Resource
 
@@ -221,7 +221,7 @@ def update_handler(request):
         log.debug("info: {}".format(r.info))
         log.debug("url: {}".format(r.url))
         entities = r.info.get('Entities', [])
-        old_count = r.info.get('Entcount', 0)
+        old_hash = r.info.get('Enthash', None)
 
         # We should only send updates for entities
         # That actually changed
@@ -238,14 +238,13 @@ def update_handler(request):
             url_post(config.hub_update, params)
 
             # Send updates for the webfinger endpoint?
-            # Be carefull, we won't detect a concurrent add and delete!?
-            count = len(entities)
-            if count != old_count:
-                log.debug("Updating webfinger endpoint reload {}/{}".format(count, old_count))
+            new_hash = hash_dict(r.e_hash)
+            if new_hash != old_hash:
+                log.debug("Updating webfinger endpoint reload {}/{}".format(new_hash, old_hash))
                 params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
                 url_post(config.hub_update, params)
             else:
-                log.debug("Skipping webfinger endpoint reload {}/{}".format(count, old_count))
+                log.debug("Skipping webfinger endpoint reload {}/{}".format(new_hash, old_hash))
 
     response = Response("OK\n")
     return response
@@ -322,20 +321,19 @@ def handle_reload(request, topic_url):
 
     if isinstance(resource, Resource):
         entities = resource.info.get('Entities', [])
-        old_count = resource.info.get('Entcount', 0)
+        old_hash = resource.info.get('Enthash', None)
     else:
         entities = []
 
     if entities:
         # Update webfinger endpoint?
-        # Be carefull, we won't detect a concurrent add and delete!?
-        count = len(entities)
-        if count != old_count:
-            log.debug("Updating webfinger endpoint reload {}/{}".format(count, old_count))
+        new_hash = hash_dict(resource.e_hash)
+        if new_hash != old_hash:
+            log.debug("Updating webfinger endpoint reload {}/{}".format(new_hash, old_hash))
             params = { 'topic': config.public_url.strip("/") + "/.well-known/webfinger" }
             url_post(config.hub_update, params)
         else:
-            log.debug("Skipping webfinger endpoint reload {}/{}".format(count, old_count))
+            log.debug("Skipping webfinger endpoint reload {}/{}".format(new_hash, old_hash))
 
     for entity in entities:
         if resource.e_notify.get(entity, False):

@@ -13,7 +13,7 @@ from datetime import datetime
 from collections import deque
 from .parse import parse_resource
 from .exceptions import ResourceException
-from .utils import url_get, non_blocking_lock, hex_digest, img_to_data, Watchable
+from .utils import url_get, non_blocking_lock, hex_digest, hash_dict, img_to_data, Watchable
 from copy import deepcopy
 from threading import Lock, Condition
 from .fetch import make_fetcher
@@ -355,8 +355,8 @@ class Resource(Watchable):
         info['Status Code'] = str(r.status_code)
         info['Reason'] = r.reason
 
-        # Store entcount, so we can decide whether we need update in webfinger endpoint
-        info['Entcount'] = len(info.get('Entities', []))
+        # Store Enthash, so we can decide whether we need update in webfinger endpoint
+        info['Enthash'] = hash_dict(self.e_hash)
 
         if r.ok:
             data = r.text
