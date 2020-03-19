@@ -1,6 +1,6 @@
 # For a non-websub idp, inform pyFF directly
-#curl -X POST http://mdq.websub.local/api/update -F 'entry=http://idp.websub.local/idp'
+#curl -X POST http://mdq.websub.local/api/update -F 'entry=http://feda.websub.local/feda'
 
 # For a websub idp, inform the hub
-#curl -X POST http://hub.websub.local/update -F 'topic=http://idp.websub.local/idp.xml'
+#curl -X POST http://hub.websub.local/update -F 'topic=http://feda.websub.local/feda.xml'
 

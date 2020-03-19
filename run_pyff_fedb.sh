@@ -10,7 +10,7 @@
     --worker-class gthread \
     -e PYFF_HUB_URL=http://hub.websub.local/hub \
     -e PYFF_HUB_UPDATE=http://hub.websub.local/update \
-    -e PYFF_PUBLIC_URL=http://sp.websub.local/ \
-    -e PYFF_PIPELINE=sp.fd \
+    -e PYFF_PUBLIC_URL=http://fedb.websub.local/ \
+    -e PYFF_PIPELINE=fedb.fd \
     -e PYFF_WORKER_POOL_SIZE=8 \
     pyff.wsgi:app
