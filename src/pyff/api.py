@@ -610,7 +610,7 @@ def mkapp(*args, **kwargs):
         ctx.add_route('request', '/*path', request_method='GET')
         ctx.add_view(process_handler, route_name='request')
 
-        start = datetime.utcnow() + timedelta(seconds=1)
+        start = datetime.now() + timedelta(seconds=1)
         log.debug(start)
         if config.update_frequency > 0: #schedule interval update
             ctx.registry.scheduler.add_job(call,
