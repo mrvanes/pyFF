@@ -60,6 +60,11 @@ def parse_lease_seconds(value):
     else:
         return lease_seconds
 
+def secret_too_big(secret):
+    # 200 bytes actually (not characters), but this is close enough as a
+    # sanity check
+    return len(secret) >= 200
+
 class AbstractSubscriberStorage(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __getitem__(self, callback_id):
