@@ -420,7 +420,7 @@ elements.
                 suffix = _dflt_rels[r][0]
             links.append(dict(rel=r,
                               type=_dflt_rels[r][1],
-                              href='%s/%s%s' % (request.host_url, url, suffix),
+                              href='%s/%s%s' % (config.public_url.strip('/'), url, suffix),
                               fp=fp
                               )
                          )
