@@ -278,7 +278,9 @@ def callback_handler(request):
     response = Response(challenge)
 
     if mode == 'denied':
-        return subscriber.temp_storage.pop(callback_id)
+        log.debug("topic denied")
+        subscriber.temp_storage.pop(callback_id)
+        return response
     elif mode in ['subscribe', 'unsubscribe']:
         subscription_request = subscriber.temp_storage.pop(callback_id)
         if not subscription_request:
