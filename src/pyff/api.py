@@ -619,7 +619,7 @@ def mkapp(*args, **kwargs):
         ctx.add_route('request', '/*path', request_method='GET')
         ctx.add_view(process_handler, route_name='request')
 
-        start = datetime.utcnow() + timedelta(seconds=1)
+        start = datetime.now() + timedelta(seconds=1)
         log.debug(start)
         if config.update_frequency > 0: #schedule interval update
             ctx.registry.scheduler.add_job(call,
@@ -630,16 +630,14 @@ def mkapp(*args, **kwargs):
                                            seconds=config.update_frequency,
                                            misfire_grace_time=60,
                                            replace_existing=True,
-                                           max_instances=1,
-                                           timezone=pytz.utc)
+                                           max_instances=1)
         else: #run update now to populate MDQ
             ctx.registry.scheduler.add_job(call,
                                           'date',
                                           id='initialise',
                                           args=['update'],
                                           next_run_time=start,
-                                          misfire_grace_time=60,
-                                          timezone=pytz.utc)
+                                          misfire_grace_time=60)
         if config.refresh_frequency > 0: #schedule interval refresh
             ctx.registry.scheduler.add_job(call,
                                            'interval',
@@ -649,6 +647,5 @@ def mkapp(*args, **kwargs):
                                            seconds=config.refresh_frequency,
                                            misfire_grace_time=60,
                                            replace_existing=True,
-                                           max_instances=1,
-                                           timezone=pytz.utc)
+                                           max_instances=1)
         return ctx.make_wsgi_app()
