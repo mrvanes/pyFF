@@ -351,6 +351,9 @@ def handle_reload(request, topic_url):
     #log.debug("Resource tree")
     #request.registry.md.rm.tree()
 
+def update_refresh(request):
+    log.debug("refresh_handler {}".format(entry))
+    subscriber.renew_close_to_expiration()
 
 def webfinger_handler(request):
     """An implementation the webfinger protocol
@@ -604,6 +607,10 @@ def mkapp(*args, **kwargs):
                       request_method=['POST'])
         ctx.add_view(update_handler, route_name='update')
 
+        ctx.add_route('refresh', '/api/refresh',
+                      request_method=['GET'])
+        ctx.add_view(update_handler, route_name='refresh')
+
         callback = config.subscriber_callback_endpoint
         ctx.add_route('callback', callback + '/{callback_id}',
                       request_method=['GET', 'POST'])
@@ -612,7 +619,7 @@ def mkapp(*args, **kwargs):
         ctx.add_route('request', '/*path', request_method='GET')
         ctx.add_view(process_handler, route_name='request')
 
-        start = datetime.now() + timedelta(seconds=1)
+        start = datetime.utcnow() + timedelta(seconds=1)
         log.debug(start)
         if config.update_frequency > 0: #schedule interval update
             ctx.registry.scheduler.add_job(call,
@@ -621,6 +628,7 @@ def mkapp(*args, **kwargs):
                                            args=['update'],
                                            start_date=start,
                                            seconds=config.update_frequency,
+                                           misfire_grace_time=60,
                                            replace_existing=True,
                                            max_instances=1,
                                            timezone=pytz.utc)
@@ -630,5 +638,17 @@ def mkapp(*args, **kwargs):
                                           id='initialise',
                                           args=['update'],
                                           next_run_time=start,
-                                          misfire_grace_time=60)
+                                          misfire_grace_time=60,
+                                          timezone=pytz.utc)
+        if config.refresh_frequency > 0: #schedule interval refresh
+            ctx.registry.scheduler.add_job(call,
+                                           'interval',
+                                           id="call/refresh",
+                                           args=['refresh'],
+                                           start_date=start,
+                                           seconds=config.refresh_frequency,
+                                           misfire_grace_time=60,
+                                           replace_existing=True,
+                                           max_instances=1,
+                                           timezone=pytz.utc)
         return ctx.make_wsgi_app()

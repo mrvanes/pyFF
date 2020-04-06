@@ -166,6 +166,7 @@ class Config(object):
     hub_update = setting("hub_update", None, as_string)
     subscriber_auto_secret = setting("subscriber_auto_secret", True, as_bool)
     subscriber_callback_endpoint = setting("subscriber_callback_endpoint", "/callback", as_string)
+    refresh_frequency = setting("refresh_frequency", 0, as_int)
 
     @property
     def base_url(self):
