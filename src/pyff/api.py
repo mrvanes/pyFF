@@ -206,6 +206,17 @@ def process_handler(request):
     if request.method == 'GET':
         raise exc.exception_response(404)
 
+def reload_handler(request):
+    url = request.POST.get('url', None)
+    response = Response('Content Received!\n')
+    topic_url = subscription.get('topic_url', None)
+
+    t = threading.Thread(target=handle_reload, args=(request, url))
+    t.start()
+
+    # End of the POST
+    return response
+
 def update_handler(request):
     entry = request.POST.get('entry', None)
     log.debug("update_handler {}".format(entry))
@@ -606,6 +617,10 @@ def mkapp(*args, **kwargs):
         ctx.add_route('update', '/api/update',
                       request_method=['POST'])
         ctx.add_view(update_handler, route_name='update')
+
+        ctx.add_route('reload', '/api/reload',
+                      request_method=['POST'])
+        ctx.add_view(update_handler, route_name='reload')
 
         ctx.add_route('refresh', '/api/refresh',
                       request_method=['GET'])
